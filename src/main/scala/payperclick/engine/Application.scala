@@ -69,9 +69,8 @@ object Application extends App {
   val submissionId = UUID.randomUUID()
   val accountId = 1
   val random = new Random()
-  val a = Source(1 to 2)
-    .map { i => BiddingRequest(submissionId, i, random.between(1, 3500), random.nextLong(), random.nextLong(), random.nextDouble())}
-    .groupBy(maxSubstreams = 3500, _.accountId)
+  Source(1 to 20001) // This source should be substituted with Google PubSub Subscriber
+    .map { i => BiddingRequest(submissionId, i, accountId, random.nextLong(), random.nextLong(), random.nextDouble())}
     .groupedWithin(10000, 1.minute)
     .to(googleBiddingSink)
     .run()
