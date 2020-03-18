@@ -2,22 +2,24 @@ package payperclick.engine
 
 import java.util.UUID
 
-import akka.NotUsed
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
-import akka.stream.Materializer
-import akka.stream.scaladsl.{RunnableGraph, Sink, Source, SubFlow}
+import akka.actor.{ActorLogging, ActorSystem, Props}
+import akka.persistence.PersistentActor
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Sink, Source}
 
-import scala.util.Random
 import scala.concurrent.duration._
+import scala.util.Random
 
 
-class GoogleBiddingActor() extends Actor with ActorLogging {
+class GoogleBiddingActor() extends PersistentActor with ActorLogging  {
 
   import GoogleBiddingActor._
 
   val random = new Random()
 
-  override def receive: Receive = {
+  override def persistenceId: String = "googleBiddingActor_acct_1"
+
+  override def receiveCommand: Receive = {
     case StreamInit =>
       log.info("Initializing stream...")
       sender() ! StreamAck
@@ -31,8 +33,16 @@ class GoogleBiddingActor() extends Actor with ActorLogging {
 
     case req: Vector[BiddingRequest] =>
       log.info(s"Received bidding request vector of size: ${req.size}")
-      Thread.sleep(random.between(50, 350))
-      sender() ! StreamAck
+      Thread.sleep(50 + random.nextInt(300))
+      persist(req) { e =>
+        log.info(s"Persisted event: $e")
+        sender() ! StreamAck
+      }
+
+  }
+
+  override def receiveRecover: Receive = {
+    case _ =>
   }
 }
 
@@ -53,12 +63,12 @@ object GoogleBiddingActor {
 object Application extends App {
 
   implicit val system: ActorSystem = ActorSystem("PayPerClickEngine")
-  implicit val materializer: Materializer = Materializer(system)
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
 
   import GoogleBiddingActor._
 
   val googleBiddingActorRef = system.actorOf(Props[GoogleBiddingActor])
-  val googleBiddingSink = Sink.actorRefWithBackpressure(
+  val googleBiddingSink = Sink.actorRefWithAck(
     googleBiddingActorRef,
     onInitMessage = StreamInit,
     onCompleteMessage = StreamComplete,
@@ -69,7 +79,7 @@ object Application extends App {
   val submissionId = UUID.randomUUID()
   val accountId = 1
   val random = new Random()
-  Source(1 to 20001) // This source should be substituted with Google PubSub Subscriber
+  Source(1 to 100000) // This source should be substituted with Google PubSub Subscriber
     .map { i => BiddingRequest(submissionId, i, accountId, random.nextLong(), random.nextLong(), random.nextDouble())}
     .groupedWithin(10000, 1.minute)
     .to(googleBiddingSink)
