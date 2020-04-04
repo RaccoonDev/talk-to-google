@@ -17,13 +17,12 @@ lazy val root = (project in file("."))
       akkaActor,
       logback,
       akkaStreams,
-//      "com.typesafe.akka" %% "akka-stream" % akkaVersion,
-//      "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
-//      "com.typesafe.akka" %% "akka-persistence-cassandra" % cassandraVersion,
-//      "com.typesafe.akka" %% "akka-persistence-cassandra-launcher" % cassandraVersion % Test,
-//      "ch.qos.logback" % "logback-classic" % "1.1.3" % Runtime,
-//      "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
-//      "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
+      akkaCluster,
+      akkaClusterSharding,
+      akkaPersistence,
+      akkaPersistenceQuery,
+      akkaPersistenceCassandra,
+      akkaSerializationJackson,
       scalaTest % Test
     )
   )

@@ -10,5 +10,15 @@ object Dependencies {
 
   lazy val logback = "ch.qos.logback" % "logback-classic" % "1.2.3"
 
+  lazy val akkaCluster = "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion
+  lazy val akkaClusterSharding = "com.typesafe.akka" %% "akka-cluster-sharding-typed" % akkaVersion
+
+  lazy val akkaPersistence ="com.typesafe.akka" %% "akka-persistence-typed" % akkaVersion
+  lazy val akkaPersistenceCassandra = "com.typesafe.akka" %% "akka-persistence-cassandra" % "1.0.0-RC1"
+
+  lazy val akkaPersistenceQuery = "com.typesafe.akka" %% "akka-persistence-query" % akkaVersion
+  lazy val akkaClusterTools = "com.typesafe.akka" % "akka-cluster-tools" % akkaVersion
+
+  lazy val akkaSerializationJackson = "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion
 
 }
