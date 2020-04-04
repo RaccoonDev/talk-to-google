@@ -1,88 +1,63 @@
 package payperclick.engine
 
-import java.util.UUID
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.LoggerOps
+import akka.actor.typed.{ ActorRef, ActorSystem, Behavior }
 
-import akka.actor.{ActorLogging, ActorSystem, Props}
-import akka.persistence.PersistentActor
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Sink, Source}
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.LoggerOps
+import akka.actor.typed.{ ActorRef, ActorSystem, Behavior }
 
-import scala.concurrent.duration._
-import scala.util.Random
+object HelloWorld {
+  final case class Greet(whom: String, replyTo: ActorRef[Greeted])
+  final case class Greeted(whom: String, from: ActorRef[Greet])
 
-
-class GoogleBiddingActor() extends PersistentActor with ActorLogging  {
-
-  import GoogleBiddingActor._
-
-  val random = new Random()
-
-  override def persistenceId: String = "googleBiddingActor_acct_1"
-
-  override def receiveCommand: Receive = {
-    case StreamInit =>
-      log.info("Initializing stream...")
-      sender() ! StreamAck
-
-    case StreamComplete =>
-      log.info("Stream complete")
-      context.stop(self)
-
-    case StreamFail(ex) =>
-      log.warning(s"Stream failed: $ex")
-
-    case req: Vector[BiddingRequest] =>
-      log.info(s"Received bidding request vector of size: ${req.size}")
-      Thread.sleep(50 + random.nextInt(300))
-      persist(req) { e =>
-        log.info(s"Persisted event: $e")
-        sender() ! StreamAck
-      }
-
-  }
-
-  override def receiveRecover: Receive = {
-    case _ =>
+  def apply(): Behavior[Greet] = Behaviors.receive { (context, message) =>
+    println(s"Hello ${message.whom}!")
+    message.replyTo ! Greeted(message.whom, context.self)
+    Behaviors.same
   }
 }
 
-object GoogleBiddingActor {
+object HelloWorldBot {
 
-  case object StreamInit
-  case object StreamAck
-  case object StreamComplete
-  case class StreamFail(ex: Throwable)
+  def apply(max: Int): Behavior[HelloWorld.Greeted] = {
+    bot(0, max)
+  }
 
-  case class BiddingRequest(submissionId: UUID, bidId: Long,
-                            accountId: Long, adGroupId: Long, keywordId: Long,
-                            maxCpc: BigDecimal)
+  private def bot(greetingCounter: Int, max: Int): Behavior[HelloWorld.Greeted] =
+    Behaviors.receive { (context, message) =>
+      val n = greetingCounter + 1
+      println(s"Greeting $n for ${message.whom}")
+      if (n == max) {
+        Behaviors.stopped
+      } else {
+        message.from ! HelloWorld.Greet(message.whom, context.self)
+        bot(n, max)
+      }
+    }
+}
 
-//  def apply(accountId: Long): Props = Props(new GoogleBiddingActor(accountId))
+object HelloWorldMain {
+
+  final case class SayHello(name: String)
+
+  def apply(): Behavior[SayHello] =
+    Behaviors.setup { context =>
+      val greeter = context.spawn(HelloWorld(), "greeter")
+
+      Behaviors.receiveMessage { message =>
+        val replyTo = context.spawn(HelloWorldBot(max = 3), message.name)
+        greeter ! HelloWorld.Greet(message.name, replyTo)
+        Behaviors.same
+      }
+    }
 }
 
 object Application extends App {
+  val system: ActorSystem[HelloWorldMain.SayHello] =
+    ActorSystem(HelloWorldMain(), "hello")
 
-  implicit val system: ActorSystem = ActorSystem("PayPerClickEngine")
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
-
-  import GoogleBiddingActor._
-
-  val googleBiddingActorRef = system.actorOf(Props[GoogleBiddingActor])
-  val googleBiddingSink = Sink.actorRefWithAck(
-    googleBiddingActorRef,
-    onInitMessage = StreamInit,
-    onCompleteMessage = StreamComplete,
-    ackMessage = StreamAck,
-    onFailureMessage = throwable => StreamFail(throwable)
-  )
-
-  val submissionId = UUID.randomUUID()
-  val accountId = 1
-  val random = new Random()
-  Source(1 to 100000) // This source should be substituted with Google PubSub Subscriber
-    .map { i => BiddingRequest(submissionId, i, accountId, random.nextLong(), random.nextLong(), random.nextDouble())}
-    .groupedWithin(10000, 1.minute)
-    .to(googleBiddingSink)
-    .run()
-
+  system ! HelloWorldMain.SayHello("World")
+  system ! HelloWorldMain.SayHello("Akka")
 }
