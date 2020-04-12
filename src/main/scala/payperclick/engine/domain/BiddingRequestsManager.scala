@@ -26,10 +26,10 @@ object BiddingRequestsManager {
               processor ! UpdateBid(ignoringBehavior, bidRequest)
               Behaviors.same
             case None =>
-              // spawn new processor
+
               val accountBidsQueueManager =
                 sharding.entityRefFor(AccountBidsQueueManager.TypeKey, bidRequest.accountId.toString)
-              // send message to the new processor
+
               accountBidsQueueManager ! UpdateBid(ignoringBehavior, bidRequest)
               apply(sharding, processors + (bidRequest.accountId -> accountBidsQueueManager), ignoringBehavior)
           }

@@ -5,12 +5,15 @@ import java.util.UUID
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import payperclick.engine.domain.{AccountBidsQueueManager, BidRequest, BidSubmissionMetadata, BiddingRequestsManager}
+import payperclick.engine.http.{EngineHttpServer, EngineRoutes}
 
 object Guardian {
-  def apply(): Behavior[Nothing] = Behaviors.setup[Nothing] { context =>
+  def apply(httpPort: Int): Behavior[Nothing] = Behaviors.setup[Nothing] { context =>
     AccountBidsQueueManager.initSharding(context.system)
 
     // That's a good place to start HTTP Service
+    val routes = new EngineRoutes(context.system)
+    EngineHttpServer.start(routes.engine, httpPort, context.system)
 
     // Simulating a request here
     val biddingRequestsManager = context.spawn(BiddingRequestsManager(), "biddingRequestsManager")

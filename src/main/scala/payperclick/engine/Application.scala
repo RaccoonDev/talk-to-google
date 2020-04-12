@@ -5,5 +5,5 @@ import org.slf4j.LoggerFactory
 
 object Application extends App {
   val logger = LoggerFactory.getLogger("ApplicationMain")
-  ActorSystem[Nothing](Guardian(), "BiddingEngine")
+  ActorSystem[Nothing](Guardian(0), "BiddingEngine")
 }

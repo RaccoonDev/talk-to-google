@@ -23,7 +23,10 @@ lazy val root = (project in file("."))
       akkaPersistenceQuery,
       akkaPersistenceCassandra,
       akkaSerializationJackson,
-      scalaTest % Test
+      akkaHttp,
+      akkaHttpSprayJson,
+      scalaTest % Test,
+      akkaTestKit % Test
     )
   )
 
