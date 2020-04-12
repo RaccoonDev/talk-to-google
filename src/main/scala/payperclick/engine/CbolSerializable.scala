@@ -1,0 +1,3 @@
+package payperclick.engine
+
+trait CborSerializable
