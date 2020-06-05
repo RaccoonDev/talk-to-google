@@ -51,12 +51,15 @@ object AccountBidsQueueManager {
   // Event
   sealed trait Event extends CborSerializable
   case class UpdateBidRequestAdded(request: BidRequest) extends Event
+  case class BatchSent(sentItems: List[Bid]) extends Event
 
   // State
     case class BidsUpdateQueues(bids: Set[Bid]) extends CborSerializable {
      def applyEvent(event: Event): BidsUpdateQueues = event match {
       case UpdateBidRequestAdded(request) =>
         copy(bids = bids + request.bid)
+      case BatchSent(items) =>
+         copy(bids = bids -- items)
     }
   }
 
@@ -75,7 +78,8 @@ object AccountBidsQueueManager {
         case UpdateBid(replyTo, request) =>
           Effect.persist(UpdateBidRequestAdded(request)).thenReply(replyTo)(_ => Acknowledged)
         case GiveNextBatch(replyTo, accountId, batchSize) =>
-          Effect.reply(replyTo)(BatchToSend(accountId, UUID.randomUUID(), state.bids.toList))
+          val batchToSend = state.bids.take(batchSize).toList
+          Effect.persist(BatchSent(batchToSend)).thenReply(replyTo)(_ => BatchToSend(accountId, UUID.randomUUID(), batchToSend))
       }
   }
 
